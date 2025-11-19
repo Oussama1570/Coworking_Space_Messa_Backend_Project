@@ -1,4 +1,4 @@
-// backend/routes/roomRoutes.js
+// routes/roomRoutes.js
 import express from "express";
 import {
   createRoomController,
@@ -13,19 +13,18 @@ import {
   relatedRoomController,
   roomCategoryController,
   braintreeTokenController,
-  brainTreePaymentController,  // ✅ use the actual exported name
-  searchRoomController,        // 🔍 search controller
+  brainTreePaymentController,   // ✅ this is how it is exported in controller
+  searchRoomController,         // ✅ search controller
 } from "../controllers/roomController.js";
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/**
- * PUBLIC ROUTES
- * =============
- */
+/* ============================
+   PUBLIC ROUTES
+============================ */
 
-// All rooms (used in admin Rooms list, home, etc.)
+// All rooms
 router.get("/get-room", getRoomController);
 
 // Single room by slug
@@ -49,28 +48,25 @@ router.get("/related-room/:pid/:cid", relatedRoomController);
 // Rooms by category slug
 router.get("/room-category/:slug", roomCategoryController);
 
-// 🔍 SEARCH ROOMS BY KEYWORD (used by SearchInput + /search page)
+// 🔍 SEARCH ROOMS – support both `/search-room` and `/search` just in case
 router.get("/search-room/:keyword", searchRoomController);
+router.get("/search/:keyword", searchRoomController);
 
-/**
- * BRAINTREE PAYMENT
- * =================
- */
+/* ============================
+   BRAINTREE PAYMENT
+============================ */
 router.get("/braintree/token", braintreeTokenController);
-router.post("/braintree/payment", requireSignIn, brainTreePaymentController);
+router.post(
+  "/braintree/payment",
+  requireSignIn,
+  brainTreePaymentController
+);
 
-/**
- * PROTECTED / ADMIN ROUTES
- * ========================
- */
-
-// Create room
+/* ============================
+   ADMIN / PROTECTED ROUTES
+============================ */
 router.post("/create-room", requireSignIn, isAdmin, createRoomController);
-
-// Update room
 router.put("/update-room/:pid", requireSignIn, isAdmin, updateRoomController);
-
-// Delete room
 router.delete("/delete-room/:pid", requireSignIn, isAdmin, deleteRoomController);
 
 export default router;
