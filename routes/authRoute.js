@@ -1,54 +1,57 @@
+// routes/authRoute.js
 import express from "express";
 import {
   registerController,
   loginController,
   testController,
   forgotPasswordController,
-  updateProfileController, 
+  updateProfileController,
   getOrdersController,
   getAllOrdersController,
-  orderStatusController, 
-  
+  orderStatusController,
+  getAllUsersController,     // ✅ added
 } from "../controllers/authController.js";
+
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 
-//router object
 const router = express.Router();
 
-//routing
-//REGISTER || METHOD POST
+// REGISTER
 router.post("/register", registerController);
 
-//LOGIN || POST
+// LOGIN
 router.post("/login", loginController);
 
-//Forgot Password || POST
+// FORGOT PASSWORD
 router.post("/forgot-password", forgotPasswordController);
 
-//test routes
+// TEST
 router.get("/test", requireSignIn, isAdmin, testController);
 
-//protected User route auth
+// AUTH CHECKS
 router.get("/user-auth", requireSignIn, (req, res) => {
   res.status(200).send({ ok: true });
 });
-//protected Admin route auth
+
 router.get("/admin-auth", requireSignIn, isAdmin, (req, res) => {
   res.status(200).send({ ok: true });
 });
 
-//update profile
+// UPDATE PROFILE
 router.put("/profile", requireSignIn, updateProfileController);
 
-
-//orders
+// USER ORDERS
 router.get("/orders", requireSignIn, getOrdersController);
 
-//all orders
+// ALL ORDERS (ADMIN)
 router.get("/all-orders", requireSignIn, isAdmin, getAllOrdersController);
 
+// ================================
+// ALL USERS (ADMIN ONLY)
+// ================================
+router.get("/all-users", requireSignIn, isAdmin, getAllUsersController);
 
-// order status update
+// ORDER STATUS UPDATE
 router.put(
   "/order-status/:orderId",
   requireSignIn,
