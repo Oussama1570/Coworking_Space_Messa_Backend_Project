@@ -13,8 +13,9 @@ import {
   relatedRoomController,
   roomCategoryController,
   braintreeTokenController,
-  brainTreePaymentController,   // ✅ this is how it is exported in controller
-  searchRoomController,         // ✅ search controller
+  brainTreePaymentController,
+  searchRoomController,
+  cashOnDeliveryController,   // ✅ NEW
 } from "../controllers/roomController.js";
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 
@@ -48,19 +49,24 @@ router.get("/related-room/:pid/:cid", relatedRoomController);
 // Rooms by category slug
 router.get("/room-category/:slug", roomCategoryController);
 
-// 🔍 SEARCH ROOMS – support both `/search-room` and `/search` just in case
+// Search
 router.get("/search-room/:keyword", searchRoomController);
 router.get("/search/:keyword", searchRoomController);
 
 /* ============================
-   BRAINTREE PAYMENT
+   PAYMENT ROUTES
 ============================ */
+
+// Braintree (online payment)
 router.get("/braintree/token", braintreeTokenController);
 router.post(
   "/braintree/payment",
   requireSignIn,
   brainTreePaymentController
 );
+
+// ✅ Cash on Delivery (COD)
+router.post("/cash-order", requireSignIn, cashOnDeliveryController);
 
 /* ============================
    ADMIN / PROTECTED ROUTES

@@ -22,16 +22,12 @@ var gateway = new braintree.BraintreeGateway({
 // ======================================================================
 // CREATE ROOM
 // ======================================================================
-// ======================================================================
-// CREATE ROOM
-// ======================================================================
 export const createRoomController = async (req, res) => {
   try {
     const { name, description, price, category, quantity, shipping } =
       req.fields || {};
     const { photo } = req.files || {};
 
-    // ------------------ basic validation ------------------
     if (!name) {
       return res
         .status(400)
@@ -53,7 +49,7 @@ export const createRoomController = async (req, res) => {
         .send({ success: false, error: "Category is required" });
     }
 
-    // 🔼 increase limit: 5 MB
+    // 5 MB
     if (photo && photo.size > 5 * 1024 * 1024) {
       return res.status(400).send({
         success: false,
@@ -61,15 +57,13 @@ export const createRoomController = async (req, res) => {
       });
     }
 
-    // ------------------ resolve category ------------------
+    // resolve category (ObjectId or name)
     let categoryId = category;
 
-    // if category is not a valid ObjectId, treat it as a NAME (e.g. "Children")
     if (!mongoose.Types.ObjectId.isValid(category)) {
       const categoryName = category.trim();
 
       const catDoc = await categoryModel.findOne({
-        // case-insensitive exact match
         name: { $regex: new RegExp(`^${categoryName}$`, "i") },
       });
 
@@ -83,7 +77,6 @@ export const createRoomController = async (req, res) => {
       categoryId = catDoc._id;
     }
 
-    // ------------------ create room ------------------
     const room = new roomModel({
       name,
       description,
@@ -115,7 +108,6 @@ export const createRoomController = async (req, res) => {
     });
   }
 };
-
 
 // ======================================================================
 // GET ALL ROOMS
@@ -214,7 +206,7 @@ export const deleteRoomController = async (req, res) => {
 };
 
 // ======================================================================
-// UPDATE ROOM (PATCH-STYLE – fields optional)
+// UPDATE ROOM
 // ======================================================================
 export const updateRoomController = async (req, res) => {
   try {
@@ -231,7 +223,6 @@ export const updateRoomController = async (req, res) => {
 
     const updateData = { ...req.fields };
 
-    // regenerate slug only if name changed
     if (name) {
       updateData.slug = slugify(name, { lower: true });
     }
@@ -344,7 +335,6 @@ export const roomListController = async (req, res) => {
 // ======================================================================
 // SEARCH ROOM
 // ======================================================================
-
 export const searchRoomController = async (req, res) => {
   try {
     const { keyword } = req.params;
@@ -353,7 +343,7 @@ export const searchRoomController = async (req, res) => {
       return res.json([]);
     }
 
-    const regex = new RegExp(keyword, "i"); // case-insensitive
+    const regex = new RegExp(keyword, "i");
 
     const rooms = await roomModel
       .find({
@@ -399,14 +389,10 @@ export const relatedRoomController = async (req, res) => {
 // ======================================================================
 // ROOMS BY CATEGORY
 // ======================================================================
-// ======================================================================
-// ROOMS BY CATEGORY
-// ======================================================================
 export const roomCategoryController = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // 1) Find category by its slug
     const category = await categoryModel.findOne({ slug });
     if (!category) {
       return res.status(404).send({
@@ -415,10 +401,9 @@ export const roomCategoryController = async (req, res) => {
       });
     }
 
-    // 2) Find rooms that belong to this category (_id, not the whole doc)
     const rooms = await roomModel
       .find({ category: category._id })
-      .select("-photo")      // we load photo via /room-photo/:pid
+      .select("-photo")
       .sort({ createdAt: -1 })
       .populate("category");
 
@@ -438,7 +423,6 @@ export const roomCategoryController = async (req, res) => {
   }
 };
 
-
 // ======================================================================
 // BRAINTREE TOKEN
 // ======================================================================
@@ -457,7 +441,7 @@ export const braintreeTokenController = async (req, res) => {
 };
 
 // ======================================================================
-// BRAINTREE PAYMENT
+// BRAINTREE PAYMENT (ONLINE)
 // ======================================================================
 export const brainTreePaymentController = async (req, res) => {
   try {
@@ -489,5 +473,51 @@ export const brainTreePaymentController = async (req, res) => {
     );
   } catch (error) {
     console.log(error);
+  }
+};
+
+// ======================================================================
+// CASH ON DELIVERY (COD) ORDER
+// ======================================================================
+export const cashOnDeliveryController = async (req, res) => {
+  try {
+    const { cart } = req.body;
+
+    if (!cart || !cart.length) {
+      return res.status(400).send({
+        success: false,
+        message: "Cart is empty",
+      });
+    }
+
+    let total = 0;
+    cart.forEach((i) => {
+      total += i.price || 0;
+    });
+
+    const order = await new orderModel({
+      rooms: cart,
+      payment: {
+        method: "COD",
+        amount: total,
+        currency: "TND",
+        success: false, // will be paid on delivery
+      },
+      buyer: req.user._id,
+      status: "Not Process", // same default as schema
+    }).save();
+
+    return res.status(201).send({
+      success: true,
+      message: "Order placed with Cash on Delivery",
+      order,
+    });
+  } catch (error) {
+    console.log("CASH ON DELIVERY ERROR =>", error);
+    return res.status(500).send({
+      success: false,
+      message: "Error placing Cash on Delivery order",
+      error: error.message,
+    });
   }
 };

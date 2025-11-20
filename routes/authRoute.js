@@ -9,7 +9,7 @@ import {
   getOrdersController,
   getAllOrdersController,
   orderStatusController,
-  getAllUsersController,     // ✅ added
+  getAllUsersController,
 } from "../controllers/authController.js";
 
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
@@ -46,9 +46,7 @@ router.get("/orders", requireSignIn, getOrdersController);
 // ALL ORDERS (ADMIN)
 router.get("/all-orders", requireSignIn, isAdmin, getAllOrdersController);
 
-// ================================
 // ALL USERS (ADMIN ONLY)
-// ================================
 router.get("/all-users", requireSignIn, isAdmin, getAllUsersController);
 
 // ORDER STATUS UPDATE

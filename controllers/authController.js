@@ -45,7 +45,6 @@ export const registerController = async (req, res) => {
       message: "User registered successfully",
       user,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -105,7 +104,6 @@ export const loginController = async (req, res) => {
       },
       token,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -125,7 +123,8 @@ export const forgotPasswordController = async (req, res) => {
 
     if (!email) return res.status(400).send({ message: "Email is required" });
     if (!answer) return res.status(400).send({ message: "Answer is required" });
-    if (!newPassword) return res.status(400).send({ message: "New Password is required" });
+    if (!newPassword)
+      return res.status(400).send({ message: "New Password is required" });
 
     const user = await userModel.findOne({ email, answer });
     if (!user) {
@@ -142,7 +141,6 @@ export const forgotPasswordController = async (req, res) => {
       success: true,
       message: "Password reset successfully",
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -195,7 +193,6 @@ export const updateProfileController = async (req, res) => {
       message: "Profile updated successfully",
       updatedUser,
     });
-
   } catch (error) {
     console.log(error);
     res.status(400).send({
@@ -213,13 +210,13 @@ export const getOrdersController = async (req, res) => {
   try {
     const orders = await orderModel
       .find({ buyer: req.user._id })
-      .populate("products", "-photo")
-      .populate("buyer", "name");
+      .populate("rooms", "-photo") // ✅ use "rooms", matches orderSchema
+      .populate("buyer", "name")
+      .sort({ createdAt: -1 });
 
     res.json(orders);
-
   } catch (error) {
-    console.log(error);
+    console.log("GET ORDERS ERROR =>", error);
     res.status(500).send({
       success: false,
       message: "Error while getting orders",
@@ -235,14 +232,13 @@ export const getAllOrdersController = async (req, res) => {
   try {
     const orders = await orderModel
       .find({})
-      .populate("products", "-photo")
+      .populate("rooms", "-photo") // ✅ use "rooms"
       .populate("buyer", "name")
-      .sort({ createdAt: "-1" });
+      .sort({ createdAt: -1 });
 
     res.json(orders);
-
   } catch (error) {
-    console.log(error);
+    console.log("GET ALL ORDERS ERROR =>", error);
     res.status(500).send({
       success: false,
       message: "Error while getting all orders",
@@ -266,7 +262,6 @@ export const orderStatusController = async (req, res) => {
     );
 
     res.json(orders);
-
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -289,7 +284,6 @@ export const getAllUsersController = async (req, res) => {
       message: "All users fetched successfully",
       users,
     });
-
   } catch (error) {
     console.log("getAllUsersController error:", error);
     return res.status(500).send({
