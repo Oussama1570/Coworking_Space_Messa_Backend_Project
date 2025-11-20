@@ -15,7 +15,7 @@ import {
   braintreeTokenController,
   brainTreePaymentController,
   searchRoomController,
-  cashOnDeliveryController,   // ✅ NEW
+  cashOrderController,          // ✅ new
 } from "../controllers/roomController.js";
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 
@@ -54,10 +54,10 @@ router.get("/search-room/:keyword", searchRoomController);
 router.get("/search/:keyword", searchRoomController);
 
 /* ============================
-   PAYMENT ROUTES
+   PAYMENT + ORDERS
 ============================ */
 
-// Braintree (online payment)
+// Braintree payment
 router.get("/braintree/token", braintreeTokenController);
 router.post(
   "/braintree/payment",
@@ -65,8 +65,8 @@ router.post(
   brainTreePaymentController
 );
 
-// ✅ Cash on Delivery (COD)
-router.post("/cash-order", requireSignIn, cashOnDeliveryController);
+// ✅ Cash on Delivery order
+router.post("/cash-order", requireSignIn, cashOrderController);
 
 /* ============================
    ADMIN / PROTECTED ROUTES

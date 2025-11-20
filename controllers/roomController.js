@@ -335,28 +335,33 @@ export const roomListController = async (req, res) => {
 // ======================================================================
 // SEARCH ROOM
 // ======================================================================
+// controllers/roomController.js
 export const searchRoomController = async (req, res) => {
   try {
     const { keyword } = req.params;
 
-    if (!keyword || !keyword.trim()) {
-      return res.json([]);
-    }
-
-    const regex = new RegExp(keyword, "i");
-
     const rooms = await roomModel
       .find({
-        $or: [{ name: regex }, { description: regex }],
+        $or: [
+          { name: { $regex: keyword, $options: "i" } },
+          { description: { $regex: keyword, $options: "i" } },
+        ],
       })
-      .select("-photo");
+      // we only exclude photo (to keep responses light)
+      .select("-photo")
+      .lean();
 
-    res.json(rooms);
+    res.status(200).send(rooms);
   } catch (error) {
-    console.error("Error in searchRoomController:", error);
-    res.status(500).json({ error: "Error while searching rooms" });
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in search API",
+      error,
+    });
   }
 };
+
 
 // ======================================================================
 // RELATED ROOMS
@@ -518,6 +523,39 @@ export const cashOnDeliveryController = async (req, res) => {
       success: false,
       message: "Error placing Cash on Delivery order",
       error: error.message,
+    });
+  }
+};
+
+
+// ======================================================================
+// CASH ON DELIVERY ORDER
+// ======================================================================
+export const cashOrderController = async (req, res) => {
+  try {
+    const { cart, shippingInfo } = req.body;
+
+    const order = await orderModel.create({
+      rooms: cart.map((item) => item._id),
+      payment: {
+        method: "COD",
+        status: "pending",
+        shippingInfo,
+      },
+      buyer: req.user._id,
+    });
+
+    return res.status(201).send({
+      success: true,
+      message: "Cash on Delivery order created",
+      order,
+    });
+  } catch (error) {
+    console.log("CASH ORDER ERROR =>", error);
+    return res.status(500).send({
+      success: false,
+      message: "Error while creating order",
+      error,
     });
   }
 };
