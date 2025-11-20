@@ -210,7 +210,7 @@ export const getOrdersController = async (req, res) => {
   try {
     const orders = await orderModel
       .find({ buyer: req.user._id })
-      .populate("rooms", "-photo") // ✅ use "rooms", matches orderSchema
+      .populate("rooms", "-photo")
       .populate("buyer", "name")
       .sort({ createdAt: -1 });
 
@@ -232,7 +232,7 @@ export const getAllOrdersController = async (req, res) => {
   try {
     const orders = await orderModel
       .find({})
-      .populate("rooms", "-photo") // ✅ use "rooms"
+      .populate("rooms", "-photo")
       .populate("buyer", "name")
       .sort({ createdAt: -1 });
 
@@ -267,6 +267,35 @@ export const orderStatusController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Error while updating order",
+      error,
+    });
+  }
+};
+
+// ===============================
+// DELETE ORDER (ADMIN)
+// ===============================
+export const deleteOrderController = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await orderModel.findByIdAndDelete(orderId);
+    if (!order) {
+      return res.status(404).send({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    return res.status(200).send({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    console.log("DELETE ORDER ERROR =>", error);
+    return res.status(500).send({
+      success: false,
+      message: "Error while deleting order",
       error,
     });
   }
