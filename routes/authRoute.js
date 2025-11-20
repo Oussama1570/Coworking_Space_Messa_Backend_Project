@@ -10,7 +10,7 @@ import {
   getAllOrdersController,
   orderStatusController,
   getAllUsersController,
-  deleteOrderController,     // ✅ new
+  deleteOrderController,      // ✅ new
 } from "../controllers/authController.js";
 
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
@@ -47,10 +47,7 @@ router.get("/orders", requireSignIn, getOrdersController);
 // ALL ORDERS (ADMIN)
 router.get("/all-orders", requireSignIn, isAdmin, getAllOrdersController);
 
-// ALL USERS (ADMIN ONLY)
-router.get("/all-users", requireSignIn, isAdmin, getAllUsersController);
-
-// ORDER STATUS UPDATE
+// ORDER STATUS UPDATE (ADMIN)
 router.put(
   "/order-status/:orderId",
   requireSignIn,
@@ -58,12 +55,18 @@ router.put(
   orderStatusController
 );
 
-// ✅ DELETE ORDER (ADMIN ONLY)
+// DELETE ORDER (USER OR ADMIN)
+// - User can delete his own order
+// - Admin can delete any order
 router.delete(
   "/order/:orderId",
   requireSignIn,
-  isAdmin,
   deleteOrderController
 );
+
+// ================================
+// ALL USERS (ADMIN ONLY)
+// ================================
+router.get("/all-users", requireSignIn, isAdmin, getAllUsersController);
 
 export default router;

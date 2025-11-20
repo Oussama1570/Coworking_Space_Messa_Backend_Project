@@ -11,8 +11,10 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// payment gateway
-var gateway = new braintree.BraintreeGateway({
+// ======================================================================
+// BRAINTREE PAYMENT GATEWAY
+// ======================================================================
+const gateway = new braintree.BraintreeGateway({
   environment: braintree.Environment.Sandbox,
   merchantId: process.env.BRAINTREE_MERCHANT_ID,
   publicKey: process.env.BRAINTREE_PUBLIC_KEY,
@@ -28,6 +30,7 @@ export const createRoomController = async (req, res) => {
       req.fields || {};
     const { photo } = req.files || {};
 
+    // Basic validation
     if (!name) {
       return res
         .status(400)
@@ -57,7 +60,7 @@ export const createRoomController = async (req, res) => {
       });
     }
 
-    // resolve category (ObjectId or name)
+    // Resolve category (ObjectId or name)
     let categoryId = category;
 
     if (!mongoose.Types.ObjectId.isValid(category)) {
@@ -335,7 +338,6 @@ export const roomListController = async (req, res) => {
 // ======================================================================
 // SEARCH ROOM
 // ======================================================================
-// controllers/roomController.js
 export const searchRoomController = async (req, res) => {
   try {
     const { keyword } = req.params;
@@ -347,7 +349,6 @@ export const searchRoomController = async (req, res) => {
           { description: { $regex: keyword, $options: "i" } },
         ],
       })
-      // we only exclude photo (to keep responses light)
       .select("-photo")
       .lean();
 
@@ -361,7 +362,6 @@ export const searchRoomController = async (req, res) => {
     });
   }
 };
-
 
 // ======================================================================
 // RELATED ROOMS
@@ -450,43 +450,7 @@ export const braintreeTokenController = async (req, res) => {
 // ======================================================================
 export const brainTreePaymentController = async (req, res) => {
   try {
-    const { nonce, cart } = req.body;
-    let total = 0;
-    cart.map((i) => {
-      total += i.price;
-    });
-    gateway.transaction.sale(
-      {
-        amount: total,
-        paymentMethodNonce: nonce,
-        options: {
-          submitForSettlement: true,
-        },
-      },
-      function (error, result) {
-        if (result) {
-          new orderModel({
-            rooms: cart,
-            payment: result,
-            buyer: req.user._id,
-          }).save();
-          res.json({ ok: true });
-        } else {
-          res.status(500).send(error);
-        }
-      }
-    );
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-// ======================================================================
-// CASH ON DELIVERY (COD) ORDER
-// ======================================================================
-export const cashOnDeliveryController = async (req, res) => {
-  try {
-    const { cart } = req.body;
+    const { nonce, cart, shippingInfo } = req.body;
 
     if (!cart || !cart.length) {
       return res.status(400).send({
@@ -500,49 +464,86 @@ export const cashOnDeliveryController = async (req, res) => {
       total += i.price || 0;
     });
 
-    const order = await new orderModel({
-      rooms: cart,
-      payment: {
-        method: "COD",
+    gateway.transaction.sale(
+      {
         amount: total,
-        currency: "TND",
-        success: false, // will be paid on delivery
+        paymentMethodNonce: nonce,
+        options: {
+          submitForSettlement: true,
+        },
       },
-      buyer: req.user._id,
-      status: "Not Process", // same default as schema
-    }).save();
+      async function (error, result) {
+        if (error || !result) {
+          console.log("BRAINTREE ERROR =>", error || result);
+          return res.status(500).send({
+            success: false,
+            message: "Payment failed",
+            error: error || result,
+          });
+        }
 
-    return res.status(201).send({
-      success: true,
-      message: "Order placed with Cash on Delivery",
-      order,
-    });
+        const success = result.success === true;
+
+        const order = await orderModel.create({
+          rooms: cart.map((item) => item._id),
+          payment: {
+            mode: "Online",
+            amount: total,
+            currency: "TND",
+            gateway: "Braintree",
+            status: success ? "paid" : "failed",
+            raw: result,
+            shippingInfo,
+          },
+          buyer: req.user._id,
+        });
+
+        return res.json({
+          ok: success,
+          order,
+        });
+      }
+    );
   } catch (error) {
-    console.log("CASH ON DELIVERY ERROR =>", error);
+    console.log("BRAINTREE PAYMENT CONTROLLER ERROR =>", error);
     return res.status(500).send({
       success: false,
-      message: "Error placing Cash on Delivery order",
+      message: "Error processing online payment",
       error: error.message,
     });
   }
 };
 
-
 // ======================================================================
-// CASH ON DELIVERY ORDER
+// CASH ON DELIVERY ORDER (COD)
 // ======================================================================
 export const cashOrderController = async (req, res) => {
   try {
     const { cart, shippingInfo } = req.body;
 
+    if (!cart || !cart.length) {
+      return res.status(400).send({
+        success: false,
+        message: "Cart is empty",
+      });
+    }
+
+    let total = 0;
+    cart.forEach((i) => {
+      total += i.price || 0;
+    });
+
     const order = await orderModel.create({
       rooms: cart.map((item) => item._id),
       payment: {
-        method: "COD",
+        mode: "Cash on Delivery",
+        amount: total,
+        currency: "TND",
         status: "pending",
         shippingInfo,
       },
       buyer: req.user._id,
+      status: "Not Process",
     });
 
     return res.status(201).send({
@@ -555,7 +556,7 @@ export const cashOrderController = async (req, res) => {
     return res.status(500).send({
       success: false,
       message: "Error while creating order",
-      error,
+      error: error.message,
     });
   }
 };
