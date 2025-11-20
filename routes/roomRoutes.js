@@ -15,7 +15,7 @@ import {
   braintreeTokenController,
   brainTreePaymentController,
   searchRoomController,
-  cashOrderController,          // ✅ new
+  cashOrderController,
 } from "../controllers/roomController.js";
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 
@@ -65,7 +65,7 @@ router.post(
   brainTreePaymentController
 );
 
-// ✅ Cash on Delivery order
+// Cash on Delivery order
 router.post("/cash-order", requireSignIn, cashOrderController);
 
 /* ============================
